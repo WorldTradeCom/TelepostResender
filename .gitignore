@@ -1,0 +1,5 @@
+# Python cache and virtual enviroment.
+__pycache__
+.venv
+# Telegram session.
+.session

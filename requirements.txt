@@ -1,0 +1,2 @@
+Telethon
+dublib[telebot]==0.24.3
