@@ -9,7 +9,6 @@ async def main():
 	Settings.load()
 	Operator = Resender(Settings)
 	await Operator.connect()
-
 	await Operator.resend_messages()
 
 asyncio.run(main())

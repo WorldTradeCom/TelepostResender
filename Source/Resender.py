@@ -64,8 +64,6 @@ class Resender:
 		:return: Возвращает `True`, если сообщение следует переслать.
 		:rtype: bool
 		"""
-
-		if not message.text or not message.media: return False
 		
 		if self.__Settings["text_processor"]["sentiment_compound"] != None:
 			PolarityScore = await self.__TextProcessor.analyze_polarity(message.text)
@@ -108,13 +106,19 @@ class Resender:
 
 			if not await self.is_message_resendable(CurrentMessage): continue
 			Text = await self.__TextProcessor.filter_paragraphs(CurrentMessage.text)
-			Text = await self.__TextProcessor.translate_to_buzzers(Text)
-			if not Text: continue
 
-			await self.__Client.send_file(
-				self.__Settings["to"],
-				file = CurrentMessage.media,
-				caption = Text
-			)
+			if Text:
+				Text = await self.__TextProcessor.translate_to_buzzers(Text)
+				if not Text: continue
+
+			if CurrentMessage.media:
+				await self.__Client.send_file(
+					self.__Settings["to"],
+					file = CurrentMessage.media,
+					caption = Text
+				)
+
+			else:
+				await self.__Client.send_message(self.__Settings["to"], message = Text)
 
 			self.__Settings.set("last_resended_id", CurrentMessage.id)
