@@ -5,6 +5,9 @@
 	"from": "",
 	"last_resended_id": null,
 	"to": "",
-	"buzzer_mutarji_directory": "",
-	"badwords": []
+	"text_processor": {
+		"buzzer_mutarji_directory": "",
+		"sentiment_compound": null,
+		"exclude_paragraphs_by_badwords": []
+	}
 }

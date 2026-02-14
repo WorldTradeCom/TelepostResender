@@ -1,2 +1,4 @@
+deep_translator
 Telethon
 dublib[telebot]==0.24.3
+nltk

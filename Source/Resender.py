@@ -1,12 +1,13 @@
+from Source.TextProcessor import TextProcessor
+
 from typing import TYPE_CHECKING
-import asyncio
 
 from telethon import TelegramClient
 
 if TYPE_CHECKING:
 	from dublib.Engine.Configurator import Config
 
-	from telethon.types import Message
+	from telethon.tl.custom.message import Message
 
 class Resender:
 	"""Оператор пересылки постов."""
@@ -51,6 +52,26 @@ class Resender:
 			lang_code = "en",
 			system_lang_code = "en-US"
 		)
+		self.__Client.parse_mode = "html"
+		self.__TextProcessor = TextProcessor(self.__Settings)
+
+	async def is_message_resendable(self, message: "Message") -> bool:
+		"""
+		Проверяет, требуется ли пересылать текущее сообщение.
+
+		:param message: Данные сообщения.
+		:type message: Message
+		:return: Возвращает `True`, если сообщение следует переслать.
+		:rtype: bool
+		"""
+
+		if not message.text or not message.media: return False
+		
+		if self.__Settings["text_processor"]["sentiment_compound"] != None:
+			PolarityScore = await self.__TextProcessor.analyze_polarity(message.text)
+			if PolarityScore.compound <= self.__Settings["text_processor"]["sentiment_compound"]: return False
+
+		return True
 
 	async def connect(self):
 		"""Выполняет подключение к серверу."""
@@ -73,64 +94,30 @@ class Resender:
 			async for CurrentMessage in self.__Client.iter_messages(self.from_chat_url, limit = 1):
 				CurrentMessage: "Message"
 				UnsendedMessages.append(CurrentMessage)
-				self.__Settings.set("last_resended_id", CurrentMessage.id)
 
 		else:
 			async for CurrentMessage in self.__Client.iter_messages(self.from_chat_url, min_id = self.last_resended_id):
 				UnsendedMessages.append(CurrentMessage)
 
-			if UnsendedMessages: self.__Settings.set("last_resended_id", UnsendedMessages[-1].id)
-
-		return tuple(UnsendedMessages)
+		return tuple(reversed(UnsendedMessages))
 	
 	async def resend_messages(self):
 		"""Запускает пересылку сообщений."""
 
-		Messages: "tuple[Message]" = await self.get_unsended_messages()
+		for CurrentMessage in await self.get_unsended_messages():
 
-		for CurrentMessage in Messages:
-			CurrentMessage: "Message"
-			Text = CurrentMessage.message
-			if self.__Settings["buzzer_mutarji_directory"]: Text = await self.translate(Text)
+			if not await self.is_message_resendable(CurrentMessage): continue
+			Text = await self.__TextProcessor.filter_paragraphs(CurrentMessage.text)
+			print("Filtered", Text)
+			Text = await self.__TextProcessor.translate_to_buzzers(Text)
+			print("Buzzer:", Text)
+			if not Text: continue
 
-			if CurrentMessage.media:
-				await self.__Client.send_file(
-					self.__Settings["to"],
-					file = CurrentMessage.media,
-					caption = Text
-				)
+			await self.__Client.send_file(
+				self.__Settings["to"],
+				file = CurrentMessage.media,
+				caption = Text
+			)
 
-			else:
-				await self.__Client.send_message(self.__Settings["to"], message = Text)
-
-	async def translate(self, text: str) -> str | None:
-		"""
-		Переводит текст на зумерский язык при помощи **Buzzer Mutarji**.
-
-		:param text: Текст сообщения.
-		:type text: str
-		:return: Переведённый текст или `None` в случае ошибки.
-		:rtype: str | None
-		"""
-
-		Command = "cd " + self.__Settings["buzzer_mutarji_directory"] + f" && . .venv/bin/activate && python main.py translate -to \"{text}\""
-		Process = await asyncio.create_subprocess_shell(Command, stdout = asyncio.subprocess.PIPE, stderr = asyncio.subprocess.PIPE)
-		stdout, stderr = await Process.communicate()
-		stdout, stderr = stdout.decode().strip(), stderr
-		if stderr: return
-
-		Lines = stdout.split("\n")
-		Buffer = list()
-
-		# Фильтрация строк по ключевым фразам.
-		for Line in Lines:
-			IsFiltered = False
-
-			for BadWord in self.__Settings["badwords"]:
-				if BadWord in Line:
-					IsFiltered = True
-					break
-			
-			if not IsFiltered: Buffer.append(Line)		
-
-		return "\n".join(Buffer)
+			self.__Settings.set("last_resended_id", CurrentMessage.id)
+			input("To next ENTER...")
