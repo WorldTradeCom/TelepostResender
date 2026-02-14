@@ -108,9 +108,7 @@ class Resender:
 
 			if not await self.is_message_resendable(CurrentMessage): continue
 			Text = await self.__TextProcessor.filter_paragraphs(CurrentMessage.text)
-			print("Filtered", Text)
 			Text = await self.__TextProcessor.translate_to_buzzers(Text)
-			print("Buzzer:", Text)
 			if not Text: continue
 
 			await self.__Client.send_file(
@@ -120,4 +118,3 @@ class Resender:
 			)
 
 			self.__Settings.set("last_resended_id", CurrentMessage.id)
-			input("To next ENTER...")
