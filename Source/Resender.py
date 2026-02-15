@@ -1,12 +1,13 @@
 from Source.TextProcessor import TextProcessor
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from telethon import TelegramClient
 
 if TYPE_CHECKING:
 	from dublib.Engine.Configurator import Config
 
+	from telethon.tl.types import MessageMediaDocument
 	from telethon.tl.custom.message import Message
 
 class Resender:
@@ -76,6 +77,27 @@ class Resender:
 
 		await self.__Client.start(self.__Settings["phone_number"])
 
+	async def get_message_attachments(self, message: "Message") -> "tuple[MessageMediaDocument]":
+		"""
+		Возвращает набор вложений для сообщения.
+
+		:param message: Данные сообщения.
+		:type message: Message
+		:return: Набор вложений.
+		:rtype: tuple[MessageMediaDocument]
+		"""
+
+		Attachments = tuple()
+		if not message.media: return Attachments
+
+		if message.grouped_id:
+			Group = await self.__Client.get_messages(self.__Settings["from"], grouped_id = message.grouped_id)
+			Attachments = tuple(Element.media for Element in Group)
+
+		else: Attachments = (message.media,)
+
+		return Attachments
+
 	async def get_unsended_messages(self) -> "tuple[Message]":
 		"""
 		Возвращает последовательность не пересланных сообщений.
@@ -110,11 +132,11 @@ class Resender:
 			if Text:
 				Text = await self.__TextProcessor.translate_to_buzzers(Text)
 				if not Text: continue
-
+			
 			if CurrentMessage.media:
 				await self.__Client.send_file(
 					self.__Settings["to"],
-					file = CurrentMessage.media,
+					file = await self.get_message_attachments(CurrentMessage),
 					caption = Text
 				)
 
