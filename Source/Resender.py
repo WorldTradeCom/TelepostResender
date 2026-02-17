@@ -180,6 +180,6 @@ class Resender:
 				print(f"Message {CurrentMessage.id} sended with {Count} attachments.")
 
 			else:
-				await self.__Client.send_message(self.__Settings["to"], message = Text)
+				await self.__Client.send_message(self.__Settings["to"], message = Text, link_preview = False)
 				self.__Settings.set("last_resended_id", CurrentMessage.id)
 				print(f"Message {CurrentMessage.id} sended.")
