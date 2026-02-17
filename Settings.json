@@ -3,11 +3,12 @@
 	"api_id": null,
 	"api_hash": "",
 	"from": "",
-	"last_resended_id": null,
 	"to": "",
+	"last_resended_id": null,
 	"text_processor": {
 		"buzzer_mutarji_directory": "",
 		"sentiment_compound": null,
+		"sign": "",
 		"exclude_paragraphs_by_badwords": []
 	}
 }

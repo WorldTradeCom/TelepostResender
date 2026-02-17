@@ -31,6 +31,12 @@ class Resender:
 		"""URL источника постов."""
 
 		return "https://t.me/" + self.__Settings["from"]
+	
+	@property
+	def to_chat_url(self) -> str:
+		"""URL целевого канала."""
+
+		return "https://t.me/" + self.__Settings["to"]
 
 	@property
 	def last_resended_id(self) -> int | None:
@@ -158,6 +164,10 @@ class Resender:
 			if Text:
 				Text = await self.__TextProcessor.translate_to_buzzers(Text)
 				if not Text: continue
+
+			Sign = self.__Settings["text_processor"]["sign"]
+			if Sign:
+				Text = Text.rstrip() + f"\n\n<a href=\"{self.to_chat_url}\">{Sign}</a>"
 			
 			if Data.attachments:
 				Count = len(Data.attachments)
