@@ -1,6 +1,9 @@
 from Source.TextProcessor import TextProcessor
 
-from typing import Any, TYPE_CHECKING
+from dublib.CLI.Templates.Bus import PrintMessage
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from telethon import TelegramClient
 
@@ -9,6 +12,12 @@ if TYPE_CHECKING:
 
 	from telethon.tl.types import MessageMediaDocument
 	from telethon.tl.custom.message import Message
+
+@dataclass
+class MessageData:
+	attachments: "tuple[MessageMediaDocument]"
+	last_id: int
+	text: str
 
 class Resender:
 	"""Оператор пересылки постов."""
@@ -56,28 +65,12 @@ class Resender:
 		self.__Client.parse_mode = "html"
 		self.__TextProcessor = TextProcessor(self.__Settings)
 
-	async def is_message_resendable(self, message: "Message") -> bool:
-		"""
-		Проверяет, требуется ли пересылать текущее сообщение.
-
-		:param message: Данные сообщения.
-		:type message: Message
-		:return: Возвращает `True`, если сообщение следует переслать.
-		:rtype: bool
-		"""
-		
-		if self.__Settings["text_processor"]["sentiment_compound"] != None:
-			PolarityScore = await self.__TextProcessor.analyze_polarity(message.text)
-			if PolarityScore.compound <= self.__Settings["text_processor"]["sentiment_compound"]: return False
-
-		return True
-
 	async def connect(self):
 		"""Выполняет подключение к серверу."""
 
 		await self.__Client.start(self.__Settings["phone_number"])
 
-	async def get_message_attachments(self, message: "Message") -> "tuple[MessageMediaDocument]":
+	async def get_message_data(self, message: "Message") -> MessageData:
 		"""
 		Возвращает набор вложений для сообщения.
 
@@ -87,16 +80,24 @@ class Resender:
 		:rtype: tuple[MessageMediaDocument]
 		"""
 
-		Attachments = tuple()
-		if not message.media: return Attachments
+		Attachments = list()
+		LastID = message.id
+		Text = message.text
 
-		if message.grouped_id:
-			Group = await self.__Client.get_messages(self.__Settings["from"], grouped_id = message.grouped_id)
-			Attachments = tuple(Element.media for Element in Group)
+		if message.media:
+			Attachments.append(message.media)
 
-		else: Attachments = (message.media,)
+			if message.grouped_id:
+				async for CurrentMessage in self.__Client.iter_messages(self.__Settings["from"], min_id = message.id, reverse = True):
+					CurrentMessage: "Message"
+					if CurrentMessage.grouped_id == message.grouped_id:
+						if not Text: Text = CurrentMessage.text
+						if CurrentMessage.id > LastID: LastID = CurrentMessage.id
+						Attachments.append(CurrentMessage.media)
 
-		return Attachments
+					else: break
+
+		return MessageData(tuple(Attachments), LastID, Text)
 
 	async def get_unsended_messages(self) -> "tuple[Message]":
 		"""
@@ -121,26 +122,54 @@ class Resender:
 
 		return tuple(reversed(UnsendedMessages))
 	
+	async def is_message_resendable(self, text: str) -> bool:
+		"""
+		Проверяет, требуется ли пересылать текущее сообщение.
+
+		:param text: Текст сообщения
+		:type text: str
+		:return: Возвращает `True`, если сообщение следует переслать.
+		:rtype: bool
+		"""
+		
+		if self.__Settings["text_processor"]["sentiment_compound"] != None:
+			PolarityScore = await self.__TextProcessor.analyze_polarity(text)
+			if PolarityScore.compound <= self.__Settings["text_processor"]["sentiment_compound"]: return False
+
+		return True
+
 	async def resend_messages(self):
 		"""Запускает пересылку сообщений."""
 
 		for CurrentMessage in await self.get_unsended_messages():
+			Data = await self.get_message_data(CurrentMessage)
 
-			if not await self.is_message_resendable(CurrentMessage): continue
-			Text = await self.__TextProcessor.filter_paragraphs(CurrentMessage.text)
+			if CurrentMessage.id <= self.last_resended_id:
+				print(f"Message {CurrentMessage.id} skipped.")
+				continue
+
+			if not Data.text or not await self.is_message_resendable(Data.text):
+				print(f"Message {CurrentMessage.id} filtered.")
+				self.__Settings.set("last_resended_id", Data.last_id)
+				continue
+
+			Text = await self.__TextProcessor.filter_paragraphs(Data.text)
 
 			if Text:
 				Text = await self.__TextProcessor.translate_to_buzzers(Text)
 				if not Text: continue
 			
-			if CurrentMessage.media:
+			if Data.attachments:
+				Count = len(Data.attachments)
 				await self.__Client.send_file(
 					self.__Settings["to"],
-					file = await self.get_message_attachments(CurrentMessage),
+					file = Data.attachments,
 					caption = Text
 				)
+				self.__Settings.set("last_resended_id", Data.last_id)
+				print(f"Message {CurrentMessage.id} sended with {Count} attachments.")
 
 			else:
 				await self.__Client.send_message(self.__Settings["to"], message = Text)
-
-			self.__Settings.set("last_resended_id", CurrentMessage.id)
+				self.__Settings.set("last_resended_id", CurrentMessage.id)
+				print(f"Message {CurrentMessage.id} sended.")
