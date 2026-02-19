@@ -1,9 +1,11 @@
 from Source.TextProcessor import TextProcessor
 
-from dublib.CLI.Templates.Bus import PrintMessage
+from dublib.Methods.Filesystem import ReadTextFile, WriteTextFile
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+import asyncio
+import os
 
 from telethon import TelegramClient
 
@@ -42,7 +44,26 @@ class Resender:
 	def last_resended_id(self) -> int | None:
 		"""ID последнего пересланного сообщения."""
 
-		return self.__Settings["last_resended_id"]
+		return self.__LastID
+
+	#==========================================================================================#
+	# >>>>> ПРИВАТНЫЕ МЕТОДЫ <<<<< #
+	#==========================================================================================#
+
+	def __GetLastResendedMessageID(self) -> int | None:
+		"""
+		Возвращает ID последнего пересланного сообщения.
+
+		:return: ID сообщения или `None` при отсутствии записи.
+		:rtype: int
+		"""
+
+		if os.path.exists(self.__FilePathForLastID): return int(ReadTextFile(self.__FilePathForLastID, strip = True))
+
+	def __SetLastResendedMessageID(self):
+		"""Записывает ID последнего пересланного сообщения."""
+
+		asyncio.to_thread(WriteTextFile, self.__FilePathForLastID, str(self.__LastID))
 
 	#==========================================================================================#
 	# >>>>> ПУБЛИЧНЫЕ МЕТОДЫ <<<<< #
@@ -70,6 +91,9 @@ class Resender:
 		)
 		self.__Client.parse_mode = "html"
 		self.__TextProcessor = TextProcessor(self.__Settings)
+
+		self.__FilePathForLastID = ".last.txt"
+		self.__LastID = self.__GetLastResendedMessageID()
 
 	async def connect(self):
 		"""Выполняет подключение к серверу."""
@@ -142,6 +166,9 @@ class Resender:
 			PolarityScore = await self.__TextProcessor.analyze_polarity(text)
 			if PolarityScore.compound <= self.__Settings["text_processor"]["sentiment_compound"]: return False
 
+		for Badword in self.__Settings["text_processor"]["skip_messages_by_badwords"]:
+			if Badword in text: return False
+
 		return True
 
 	async def resend_messages(self):
@@ -156,7 +183,7 @@ class Resender:
 
 			if not Data.text or not await self.is_message_resendable(Data.text):
 				print(f"Message {CurrentMessage.id} filtered.")
-				self.__Settings.set("last_resended_id", Data.last_id)
+				self.__SetLastResendedMessageID(Data.last_id)
 				continue
 
 			Text = await self.__TextProcessor.filter_paragraphs(Data.text)
@@ -176,10 +203,10 @@ class Resender:
 					file = Data.attachments,
 					caption = Text
 				)
-				self.__Settings.set("last_resended_id", Data.last_id)
+				self.__SetLastResendedMessageID(Data.last_id)
 				print(f"Message {CurrentMessage.id} sended with {Count} attachments.")
 
 			else:
 				await self.__Client.send_message(self.__Settings["to"], message = Text, link_preview = False)
-				self.__Settings.set("last_resended_id", CurrentMessage.id)
+				self.__SetLastResendedMessageID(CurrentMessage.id)
 				print(f"Message {CurrentMessage.id} sended.")

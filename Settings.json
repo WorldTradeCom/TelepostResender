@@ -4,11 +4,11 @@
 	"api_hash": "",
 	"from": "",
 	"to": "",
-	"last_resended_id": null,
 	"text_processor": {
 		"buzzer_mutarji_directory": "",
 		"sentiment_compound": null,
 		"sign": "",
+		"skip_messages_by_badwords": [],
 		"exclude_paragraphs_by_badwords": []
 	}
 }
