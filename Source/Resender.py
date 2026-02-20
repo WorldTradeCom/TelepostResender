@@ -60,10 +60,15 @@ class Resender:
 
 		if os.path.exists(self.__FilePathForLastID): return int(ReadTextFile(self.__FilePathForLastID, strip = True))
 
-	def __SetLastResendedMessageID(self):
-		"""Записывает ID последнего пересланного сообщения."""
+	def __SetLastResendedMessageID(self, id: int):
+		"""
+		Записывает ID последнего пересланного сообщения.
 
-		asyncio.to_thread(WriteTextFile, self.__FilePathForLastID, str(self.__LastID))
+		:param id: ID сообщения
+		:type id: int
+		"""
+
+		asyncio.to_thread(WriteTextFile, self.__FilePathForLastID, str(id))
 
 	#==========================================================================================#
 	# >>>>> ПУБЛИЧНЫЕ МЕТОДЫ <<<<< #
