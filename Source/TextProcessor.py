@@ -95,6 +95,6 @@ class TextProcessor:
 		Process = await asyncio.create_subprocess_shell(Command, stdout = asyncio.subprocess.PIPE, stderr = asyncio.subprocess.PIPE)
 		stdout, stderr = await Process.communicate()
 		stdout, stderr = stdout.decode().strip(), stderr
-		if stderr: return
+		if stderr or stdout == "None": return
 
 		return stdout

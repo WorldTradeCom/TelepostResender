@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class MessageData:
 	attachments: "tuple[MessageMediaDocument]"
 	last_id: int
-	text: str
+	text: str | None
 
 class Resender:
 	"""Оператор пересылки постов."""
@@ -68,7 +68,7 @@ class Resender:
 		:type id: int
 		"""
 
-		asyncio.to_thread(WriteTextFile, self.__FilePathForLastID, str(id))
+		WriteTextFile(self.__FilePathForLastID, str(id))
 
 	#==========================================================================================#
 	# >>>>> ПУБЛИЧНЫЕ МЕТОДЫ <<<<< #
@@ -185,7 +185,7 @@ class Resender:
 			if self.last_resended_id and CurrentMessage.id <= self.last_resended_id:
 				print(f"Message {CurrentMessage.id} skipped.")
 				continue
-
+			
 			if not Data.text or not await self.is_message_resendable(Data.text):
 				print(f"Message {CurrentMessage.id} filtered.")
 				self.__SetLastResendedMessageID(Data.last_id)
@@ -195,7 +195,9 @@ class Resender:
 
 			if Text:
 				Text = await self.__TextProcessor.translate_to_buzzers(Text)
-				if not Text: continue
+				if not Text:
+					print(f"Unable translate message {CurrentMessage.id}.")
+					continue
 
 			Sign = self.__Settings["text_processor"]["sign"]
 			if Sign:

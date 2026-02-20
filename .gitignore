@@ -4,3 +4,5 @@ __pycache__
 # Telegram session.
 .session-journal
 .session
+# Temp files.
+.last.txt
