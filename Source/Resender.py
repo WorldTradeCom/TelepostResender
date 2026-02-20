@@ -177,7 +177,7 @@ class Resender:
 		for CurrentMessage in await self.get_unsended_messages():
 			Data = await self.get_message_data(CurrentMessage)
 
-			if CurrentMessage.id <= self.last_resended_id:
+			if self.last_resended_id and CurrentMessage.id <= self.last_resended_id:
 				print(f"Message {CurrentMessage.id} skipped.")
 				continue
 
