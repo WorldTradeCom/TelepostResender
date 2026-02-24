@@ -6,6 +6,7 @@
 	"to": "",
 	"text_processor": {
 		"buzzer_mutarji_directory": "",
+		"buzzerator_requests": [],
 		"sentiment_compound": null,
 		"sign": "",
 		"skip_messages_by_badwords": [],

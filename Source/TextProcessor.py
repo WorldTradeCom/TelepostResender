@@ -90,14 +90,11 @@ class TextProcessor:
 		:rtype: str | None
 		"""
 
-		Additional = (
-			"Никак не модифицируй названия и имена.",
-			"Не используй тюремные или оскорбительные жаргонизмы."
-		)
-		Additional = " ".join(Additional)
+		Additional = " ".join(self.__Settings["text_processor"]["buzzerator_requests"]).strip()
+		if Additional: Additional = f" --additional \"{Additional}\""
 
 		if not self.__Settings["text_processor"]["buzzer_mutarji_directory"]: return text
-		Command = "cd " + self.__Settings["text_processor"]["buzzer_mutarji_directory"] + f" && . .venv/bin/activate && python main.py translate -to \"{text}\" --additional \"{Additional}\""
+		Command = "cd " + self.__Settings["text_processor"]["buzzer_mutarji_directory"] + f" && . .venv/bin/activate && python main.py translate -to \"{text}\"{Additional}"
 		Process = await asyncio.create_subprocess_shell(Command, stdout = asyncio.subprocess.PIPE, stderr = asyncio.subprocess.PIPE)
 		stdout, stderr = await Process.communicate()
 		stdout, stderr = stdout.decode().strip(), stderr
