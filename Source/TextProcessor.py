@@ -90,11 +90,17 @@ class TextProcessor:
 		:rtype: str | None
 		"""
 
+		Additional = (
+			"Никак не модифицируй названия и имена.",
+			"Не используй тюремные или оскорбительные жаргонизмы."
+		)
+		Additional = " ".join(Additional)
+
 		if not self.__Settings["text_processor"]["buzzer_mutarji_directory"]: return text
-		Command = "cd " + self.__Settings["text_processor"]["buzzer_mutarji_directory"] + f" && . .venv/bin/activate && python main.py translate -to \"{text}\""
+		Command = "cd " + self.__Settings["text_processor"]["buzzer_mutarji_directory"] + f" && . .venv/bin/activate && python main.py translate -to \"{text}\" --additional \"{Additional}\""
 		Process = await asyncio.create_subprocess_shell(Command, stdout = asyncio.subprocess.PIPE, stderr = asyncio.subprocess.PIPE)
 		stdout, stderr = await Process.communicate()
 		stdout, stderr = stdout.decode().strip(), stderr
-		if stderr or stdout == "None": return
+		if stderr or stdout == "None" or "Generation failed with response JSON" in stdout: return
 
 		return stdout

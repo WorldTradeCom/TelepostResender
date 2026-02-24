@@ -103,7 +103,7 @@ class Resender:
 	async def connect(self):
 		"""Выполняет подключение к серверу."""
 
-		await self.__Client.start(self.__Settings["phone_number"])
+		await self.__Client.start(self.__Settings["phone_number"], max_attempts = 1)
 
 	async def get_message_data(self, message: "Message") -> MessageData:
 		"""
