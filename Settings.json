@@ -4,7 +4,14 @@
 	"api_hash": "",
 	"from": "",
 	"to": "",
+	"neurohub": {
+		"port": 8000,
+		"source": "",
+		"model": "",
+		"force_proxy": false
+	},
 	"text_processor": {
+		"ai_filters": [],
 		"remove_html_tags": [],
 		"buzzer_mutarji_directory": "",
 		"buzzerator_requests": [],
@@ -12,5 +19,6 @@
 		"sign": "",
 		"skip_messages_by_badwords": [],
 		"exclude_paragraphs_by_badwords": []
+		]
 	}
 }

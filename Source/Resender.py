@@ -1,10 +1,10 @@
+from Source.NeuroHub.Connection.API import Options, Requestor
 from Source.TextProcessor import TextProcessor
 
 from dublib.Methods.Filesystem import ReadTextFile, WriteTextFile
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-import asyncio
 import os
 
 from telethon import TelegramClient
@@ -49,6 +49,40 @@ class Resender:
 	#==========================================================================================#
 	# >>>>> ПРИВАТНЫЕ МЕТОДЫ <<<<< #
 	#==========================================================================================#
+
+	async def __FilterByAI(self, text: str) -> bool | None:
+		"""
+		Проверяет, подходит ли текст для пересылки по мнению **AI**.
+
+		:param text: Проверяемый текст.
+		:type text: str
+		:return: Возвращает `True`, если текст подходит для пересылки по мнению **AI**, или `None` в случае пропуска проверки или ошибки.
+		:rtype: bool
+		"""
+
+		Text = [
+			f"Ты выполняешь роль фильтра. Проверь следующий текст:\n\"{text}\"\n",
+			"Проверь текст на соответствие следующим критериям и если обнаружишь хотя бы один из них, напиши \"True\" не добавляя ничего другого, иначе \"False\"."
+		]
+
+		Index = 1
+		for Line in self.__Settings["text_processor"]["ai_filters"]:
+			Text.append(f"{Index}. {Line}")
+			Index += 1
+		
+		Master = Requestor(self.__NeuroHubOptions, port = self.__Settings["neurohub"]["port"])
+		Response = Master.generate(" ".join(Text))
+		if Response.status_code != 200: return
+
+		Answer: str | None = Response.json.get("text")
+
+		if Answer:
+			Answer: str
+			Answer = Answer.lower()
+			
+			match Answer:
+				case "true": return True
+				case "False": return False
 
 	def __GetLastResendedMessageID(self) -> int | None:
 		"""
@@ -99,6 +133,11 @@ class Resender:
 
 		self.__FilePathForLastID = ".last.txt"
 		self.__LastID = self.__GetLastResendedMessageID()
+
+		self.__NeuroHubOptions = Options()
+		self.__NeuroHubOptions.select_source(self.__Settings["neurohub"]["source"])
+		self.__NeuroHubOptions.set_model(self.__Settings["neurohub"]["model"])
+		self.__NeuroHubOptions.set_force_proxy(self.__Settings["neurohub"]["force_proxy"])
 
 	async def connect(self):
 		"""Выполняет подключение к серверу."""
@@ -174,6 +213,9 @@ class Resender:
 		for Badword in self.__Settings["text_processor"]["skip_messages_by_badwords"]:
 			if Badword in text: return False
 
+		if self.__Settings["neurohub"]["source"] and self.__Settings["neurohub"]["model"]:
+			if await self.__FilterByAI(text): return False
+
 		return True
 
 	async def resend_messages(self):
@@ -185,13 +227,18 @@ class Resender:
 			if self.last_resended_id and CurrentMessage.id <= self.last_resended_id:
 				print(f"Message {CurrentMessage.id} skipped.")
 				continue
+
+			if not Data.text and CurrentMessage.grouped_id:
+				print(f"Message {CurrentMessage.id} skipped as album part.")
+				self.__SetLastResendedMessageID(Data.last_id)
+				continue
 			
-			if not Data.text or not await self.is_message_resendable(Data.text):
+			Text = await self.__TextProcessor.filter_paragraphs(Data.text)
+
+			if not await self.is_message_resendable(Text):
 				print(f"Message {CurrentMessage.id} filtered.")
 				self.__SetLastResendedMessageID(Data.last_id)
 				continue
-
-			Text = await self.__TextProcessor.filter_paragraphs(Data.text)
 
 			if Text:
 				Text = await self.__TextProcessor.translate_to_buzzers(Text)
