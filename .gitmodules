@@ -1,0 +1,3 @@
+[submodule "Source/NeuroHub"]
+	path = Source/NeuroHub
+	url = https://github.com/DUB1401/NeuroHub
