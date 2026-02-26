@@ -5,6 +5,7 @@
 	"from": "",
 	"to": "",
 	"text_processor": {
+		"remove_html_tags": [],
 		"buzzer_mutarji_directory": "",
 		"buzzerator_requests": [],
 		"sentiment_compound": null,

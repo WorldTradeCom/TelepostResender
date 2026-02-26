@@ -46,6 +46,13 @@ ___
 
 ### Text Processor
 В секции `text_processor` располагаются опции дополнительных обработчиков контента.
+___
+```JSON
+"remove_html_tags": []
+```
+Список удаляемых тегов HTML-форматирования Telegram.
+___
+Если необходимо выполнять перевод на зумерский, можно указать путь к каталогу [BuzzerMutarji](https://github.com/WorldTradeCom/BuzzerMutarji) для использования его CLI.
 ```JSON
 "buzzer_mutarji_directory": ""
 ```

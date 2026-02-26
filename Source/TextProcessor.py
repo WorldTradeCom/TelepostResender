@@ -1,3 +1,5 @@
+from dublib.Polyglot import HTML
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 import asyncio
@@ -80,6 +82,21 @@ class TextProcessor:
 
 		return "\n".join(Buffer)
 	
+	async def remove_tags(self, text: str) -> str:
+		"""
+		Удаляет из текста HTML теги.
+
+		:param text: Обрабатываемый текст.
+		:type text: str
+		:return: Обработанный текст.
+		:rtype: str
+		"""
+
+		TextHTML = HTML(text)
+		TextHTML.remove_tags(self.__Settings["text_processor"]["remove_html_tags"])
+
+		return TextHTML.text
+
 	async def translate_to_buzzers(self, text: str) -> str | None:
 		"""
 		Переводит текст на зумерский язык при помощи **Buzzer Mutarji**. Если не указан каталог переводчика, вернёт исходную строку.

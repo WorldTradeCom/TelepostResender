@@ -199,6 +199,8 @@ class Resender:
 					print(f"Unable translate message {CurrentMessage.id}.")
 					continue
 
+			if Text: Text = await self.__TextProcessor.remove_tags(Text)
+
 			Sign = self.__Settings["text_processor"]["sign"]
 			if Sign:
 				Text = Text.rstrip() + f"\n\n<a href=\"{self.to_chat_url}\">{Sign}</a>"
